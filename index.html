@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2937">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="גולם מצלמה">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>גולם — מצלמה: אישור זיהוי</title>
+<style>
+  :root{color-scheme:light dark;--bg:#f3f4f6;--card:#fff;--fg:#111827;--muted:#6b7280;--line:#e5e7eb;
+        --ok:#16a34a;--warn:#d97706;--bad:#dc2626;--pri:#2563eb;--chip:#eef2ff}
+  @media (prefers-color-scheme:dark){:root{--bg:#0b0f17;--card:#161b26;--fg:#f3f4f6;--muted:#9ca3af;--line:#283040;--chip:#1f2a44}}
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{font:16px/1.45 -apple-system,"Segoe UI",Roboto,Arial,"Noto Sans Hebrew",sans-serif;background:var(--bg);color:var(--fg);
+       padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);
+         padding:calc(10px + env(safe-area-inset-top)) 14px 10px;display:flex;align-items:center;gap:10px}
+  header h1{font-size:18px;margin:0;flex:1}
+  button{font:inherit;border:0;border-radius:12px;padding:12px 14px;cursor:pointer;color:#fff;background:var(--pri)}
+  button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+  button:disabled{opacity:.5}
+  .tabs{display:flex;gap:8px;padding:10px 14px}
+  .tabs button{background:var(--chip);color:var(--fg);padding:8px 14px;border-radius:999px}
+  .tabs button.on{background:var(--pri);color:#fff}
+  main{padding:0 14px 40px;max-width:640px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;margin:12px 0;overflow:hidden}
+  .imgs{display:grid;grid-template-columns:120px 1fr;gap:0;background:#000}
+  .imgs img{width:100%;height:160px;object-fit:cover;display:block}
+  .imgs img.full{object-fit:contain;background:#000}
+  .body{padding:12px 14px}
+  .meta{color:var(--muted);font-size:14px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .pred{font-size:20px;font-weight:700;margin:6px 0 10px}
+  .pred small{font-weight:400;color:var(--muted);font-size:14px}
+  .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .acts .ok{background:var(--ok)} .acts .bad{background:var(--bad)} .acts .skip{background:var(--muted)}
+  .pick{display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+  .pick.on{display:block}
+  .names{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .names button{background:var(--chip);color:var(--fg);padding:9px 12px;border-radius:999px}
+  .names button.sel{background:var(--pri);color:#fff}
+  .newname{display:flex;gap:8px} .newname input{flex:1;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--fg)}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;background:var(--chip)}
+  .badge.confirmed{background:#dcfce7;color:#166534}.badge.corrected{background:#fef3c7;color:#92400e}
+  .badge.stranger{background:#fee2e2;color:#991b1b}.badge.skipped{background:var(--chip);color:var(--muted)}
+  .login{max-width:420px;margin:48px auto;padding:0 16px}
+  .login input{width:100%;font:inherit;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--fg);margin:10px 0}
+  .msg{color:var(--muted);font-size:14px;margin:8px 0}
+  .empty{text-align:center;color:var(--muted);padding:48px 16px}
+  .toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);
+         padding:10px 16px;border-radius:999px;opacity:0;transition:opacity .2s;pointer-events:none;font-size:14px}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>גולם — מצלמה</h1>
+  <button class="ghost" id="refresh" title="רענון">⟳</button>
+  <button class="ghost" id="logout" style="display:none">יציאה</button>
+</header>
+
+<section id="loginView" class="login" hidden>
+  <h2>כניסה</h2>
+  <p class="msg">נשלח אליך למייל קישור כניסה חד-פעמי. פתח אותו בטלפון.</p>
+  <input id="email" type="email" inputmode="email" placeholder="המייל שלך" autocomplete="email">
+  <button id="sendLink" style="width:100%">שלח קישור</button>
+  <p class="msg" id="loginMsg"></p>
+</section>
+
+<section id="appView" hidden>
+  <div class="tabs">
+    <button data-tab="pending" class="on">ממתינים <span id="nPending"></span></button>
+    <button data-tab="done">טופלו</button>
+  </div>
+  <main id="list"></main>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = "https://nnsstusqkbnhahuvwmsl.supabase.co";
+const SUPABASE_KEY = "sb_publishable_cFJJM-SFQEuyFld2GaDNFA_AQwIiHdU"; // מפתח ציבורי; הגישה נאכפת ב-RLS
+const BUCKET = "wa-media";
+const STRANGER = "_זרים";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const $ = (s) => document.querySelector(s);
+let tab = "pending", people = [], session = null, timer = null;
+
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("on"); setTimeout(()=>el.classList.remove("on"),1800); }
+function fmt(ts){ const d=new Date(ts); return d.toLocaleString("he-IL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function label(status){ return {pending:"ממתין",confirmed:"אושר",corrected:"תוקן",stranger:"זר",skipped:"דולג"}[status]||status; }
+
+// ---------- auth
+async function boot(){
+  const { data } = await sb.auth.getSession();
+  session = data.session;
+  sb.auth.onAuthStateChange((_e, s) => { session = s; render(); });
+  render();
+}
+async function render(){
+  $("#loginView").hidden = !!session;
+  $("#appView").hidden = !session;
+  $("#logout").style.display = session ? "" : "none";
+  if (session) { await loadPeople(); await loadEvents(); if (!timer) timer = setInterval(loadEvents, 30000); }
+  else if (timer) { clearInterval(timer); timer = null; }
+}
+$("#sendLink").onclick = async () => {
+  const email = $("#email").value.trim();
+  if (!email) return;
+  $("#sendLink").disabled = true;
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+  $("#loginMsg").textContent = error ? "שגיאה: " + error.message : "נשלח. בדוק את המייל ופתח את הקישור מהטלפון.";
+  $("#sendLink").disabled = false;
+};
+$("#logout").onclick = async () => { await sb.auth.signOut(); };
+$("#refresh").onclick = () => loadEvents(true);
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  tab = b.dataset.tab; document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b)); loadEvents();
+});
+
+// ---------- data
+async function loadPeople(){
+  const { data, error } = await sb.from("cam_people").select("name,n_faces").order("name");
+  if (!error) people = (data||[]).map(p => p.name).filter(n => !n.startsWith("_"));
+}
+async function signed(path){
+  if (!path) return "";
+  const { data } = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
+  return data?.signedUrl || "";
+}
+async function loadEvents(manual){
+  let q = sb.from("cam_events").select("*").order("created_at", { ascending: false }).limit(tab === "pending" ? 50 : 30);
+  q = tab === "pending" ? q.eq("status", "pending") : q.neq("status", "pending");
+  const { data, error } = await q;
+  if (error) { toast("שגיאה בטעינה"); return; }
+  const { count } = await sb.from("cam_events").select("id", { count: "exact", head: true }).eq("status", "pending");
+  $("#nPending").textContent = count ? `(${count})` : "";
+  const list = $("#list");
+  if (!data.length) { list.innerHTML = `<div class="empty">${tab === "pending" ? "אין זיהויים שממתינים לאישור 👍" : "עוד לא טופל כלום"}</div>`; return; }
+  const urls = await Promise.all(data.map(async ev => [await signed(ev.crop_path), await signed(ev.image_path)]));
+  list.innerHTML = data.map((ev, i) => card(ev, urls[i][0], urls[i][1])).join("");
+  if (manual) toast("עודכן");
+}
+function card(ev, crop, full){
+  const pred = ev.predicted ? `${esc(ev.predicted)} <small>התאמה ${Number(ev.score).toFixed(2)}</small>` : `לא מוכר <small>הכי קרוב ${Number(ev.score||0).toFixed(2)}</small>`;
+  const done = ev.status !== "pending";
+  const doneLine = done ? `<div class="meta" style="margin-top:8px"><span class="badge ${ev.status}">${label(ev.status)}${ev.label && ev.status==="corrected" ? " → "+esc(ev.label) : ""}</span>
+      <span>${ev.applied_at ? "✓ נלמד" : (ev.apply_error ? "⚠ " + esc(ev.apply_error) : (ev.status==="skipped" ? "" : "ממתין ללמידה במחשב"))}</span></div>` : "";
+  const acts = done ? "" : `
+    <div class="acts">
+      ${ev.predicted ? `<button class="ok" onclick="decide(${ev.id},'confirmed')">✓ נכון, זה ${esc(ev.predicted)}</button>` : `<button class="ok" onclick="openPick(${ev.id})">👤 זה בן משפחה</button>`}
+      ${ev.predicted ? `<button onclick="openPick(${ev.id})">👤 מישהו אחר</button>` : `<button class="bad" onclick="decide(${ev.id},'stranger')">🚫 זר</button>`}
+      ${ev.predicted ? `<button class="bad" onclick="decide(${ev.id},'stranger')">🚫 זר</button>` : ""}
+      <button class="skip" onclick="decide(${ev.id},'skipped')">⏭ לא ברור, דלג</button>
+    </div>
+    <div class="pick" id="pick-${ev.id}">
+      <div class="msg">מי זה?</div>
+      <div class="names">${people.filter(n => n !== ev.predicted).map(n => `<button onclick="pickName(${ev.id},this)">${esc(n)}</button>`).join("")}</div>
+      <div class="newname"><input id="new-${ev.id}" placeholder="או שם חדש…"><button onclick="submitPick(${ev.id})">אשר</button></div>
+    </div>`;
+  return `<div class="card" id="card-${ev.id}">
+    <div class="imgs">${crop ? `<img src="${crop}" alt="פנים">` : "<div></div>"}${full ? `<img class="full" src="${full}" alt="תמונה מלאה" onclick="window.open(this.src)">` : ""}</div>
+    <div class="body">
+      <div class="meta"><span>${fmt(ev.created_at)}</span><span>${esc(ev.camera)} · ${ev.mode === "armed" ? "דרוכה" : "זיהוי"}</span></div>
+      <div class="pred">${pred}</div>
+      ${acts}${doneLine}
+    </div></div>`;
+}
+window.openPick = (id) => { $(`#pick-${id}`).classList.toggle("on"); };
+window.pickName = (id, btn) => { btn.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("sel", b === btn)); $(`#new-${id}`).value = ""; };
+window.submitPick = (id) => {
+  const sel = document.querySelector(`#pick-${id} .names .sel`);
+  const name = ($(`#new-${id}`).value.trim() || (sel ? sel.textContent : "")).trim();
+  if (!name) { toast("בחר שם"); return; }
+  decide(id, "corrected", name);
+};
+window.decide = async (id, status, name) => {
+  const card = $(`#card-${id}`); card.style.opacity = .5;
+  const upd = { status, decided_at: new Date().toISOString() };
+  if (status === "corrected") upd.label = name;
+  if (status === "stranger") upd.label = STRANGER;
+  const { error } = await sb.from("cam_events").update(upd).eq("id", id);
+  if (error) { card.style.opacity = 1; toast("שגיאה: " + error.message); return; }
+  toast({confirmed:"אושר ✓",corrected:"תוקן → " + name,stranger:"סומן כזר",skipped:"דולג"}[status]);
+  if (status === "corrected" && name && !people.includes(name)) people.push(name);
+  loadEvents();
+};
+boot();
+</script>
+</body>
+</html>

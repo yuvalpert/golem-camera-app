@@ -1,2 +1,12 @@
-# golem-camera-app
-אישור/תיקון זיהויי פנים של golem-camera מהנייד (GitHub Pages + Supabase Auth)
+# golem-camera-app — אישור זיהוי פנים מהנייד
+
+דף ווב אחד (ללא שרת) לאישור/תיקון זיהויים של [golem-camera](https://github.com/yuvalpert/golem-camera).
+הסקריפט במחשב כותב כל זיהוי ל-Supabase (`cam_events` + תמונות ב-`wa-media/cam/`); כאן יובל מאשר, מתקן או מסמן "זר",
+והסקריפט לומד מזה אוטומטית (שומר את החיתוך ב-`family\<שם>\auto_*.jpg` ומוסיף למודל).
+
+- אחסון: GitHub Pages מהריפו הזה. בדף אין שום תמונה — הכול נטען רק אחרי התחברות.
+- כניסה: Supabase Auth, קישור חד-פעמי למייל. RLS מאפשר גישה רק למייל של יובל.
+- המפתח בקוד הוא ה-publishable key — ציבורי מעצם הגדרתו; ההרשאות נאכפות בצד השרת.
+- להתקנה בטלפון: לפתוח בדפדפן ← "הוסף למסך הבית".
+
+הגדרה חד-פעמית ב-Supabase: Authentication → URL Configuration → Site URL = כתובת ה-Pages של הריפו.
