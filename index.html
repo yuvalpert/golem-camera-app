@@ -148,7 +148,10 @@ async function loadEvents(manual){
   if (manual) toast("עודכן");
 }
 function card(ev, crop, full){
-  const pred = ev.predicted ? `${esc(ev.predicted)} <small>התאמה ${Number(ev.score).toFixed(2)}</small>` : `לא מוכר <small>הכי קרוב ${Number(ev.score||0).toFixed(2)}</small>`;
+  const how = {"face+clothes":"פנים + בגדים","clothes":"לפי בגדים — הפנים לא זוהו","clothes-noface":"לפי בגדים בלבד — הפנים לא נראו"}[ev.method] || "";
+  const pred = ev.predicted
+    ? (ev.method && ev.method.startsWith("clothes") ? `כנראה ${esc(ev.predicted)} <small>${how}</small>` : `${esc(ev.predicted)} <small>התאמה ${Number(ev.score).toFixed(2)}${how ? " · " + how : ""}</small>`)
+    : `לא מוכר <small>הכי קרוב ${Number(ev.score||0).toFixed(2)}</small>`;
   const done = ev.status !== "pending";
   const doneLine = done ? `<div class="meta" style="margin-top:8px"><span class="badge ${ev.status}">${label(ev.status)}${ev.label && ev.status==="corrected" ? " → "+esc(ev.label) : ""}</span>
       <span>${ev.applied_at ? "✓ נלמד" : (ev.apply_error ? "⚠ " + esc(ev.apply_error) : (ev.status==="skipped" ? "" : "ממתין ללמידה במחשב"))}</span></div>` : "";
